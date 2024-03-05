@@ -1,0 +1,79 @@
+---
+title: "DTSA 5301: Week 3"
+author: "Krishan"
+date: "2024-2-24"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing Data
+
+First, we will declare which packages we will use in this document.
+
+After finding the URL for the NYPD Shooting Incident Data, we import this data into R.
+
+```{r get_shooting_data}
+library(tidyverse)
+library(Kendall)
+
+shooting_data <- read_csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD")
+```
+
+## Tidying Data
+
+```{r tidying_shooting_data}
+shooting_data_tidy <- shooting_data %>%
+  select(-c(LOC_OF_OCCUR_DESC,JURISDICTION_CODE,LOCATION_DESC, LOC_CLASSFCTN_DESC,LOC_OF_OCCUR_DESC,X_COORD_CD,Y_COORD_CD,Latitude,Longitude,Lon_Lat)) %>%
+  mutate(OCCUR_DATE = mdy(OCCUR_DATE)) %>%
+  mutate(across(PERP_AGE_GROUP:VIC_RACE,as.factor))
+
+shooting_data_tidy$Year <- as.factor(year(shooting_data_tidy$OCCUR_DATE))
+shooting_data_tidy$Month <- as.factor(month(shooting_data_tidy$OCCUR_DATE))
+
+summary(shooting_data_tidy)
+
+```
+
+There is missing data regarding several variables, including perpetrator age group/sex/race, as well as victim age group/sex/race. In analyses including these variables, I would perform a complete cases only analysis and subsequently perform a sensitivity analysis to demonstrate similarity between cases analyzed and total cases.
+
+## Analysis & Visualizations
+
+```{r analyze_visualize_shooting_data}
+
+ggplot(shooting_data_tidy,aes(x=Year)) + geom_bar() + 
+  labs(title = "Number of Shootings by Year", x = "Year", y = "Number of Shootings")
+
+average_shooting_per_year <- nrow(shooting_data_tidy)/ length(unique(shooting_data_tidy$Year))
+cat("The average number of shootings per year from",min(as.numeric(levels(shooting_data_tidy$Year))),
+    "to",max(as.numeric(levels(shooting_data_tidy$Year))),"is",average_shooting_per_year)
+
+shootings_by_year <- shooting_data_tidy %>% group_by(Year) %>% summarise(Shootings = n())
+
+cat("The following demonstrates the Mann-Kendall trend test for shootings by year to determine",
+"\n","if there is a monotonic trend over time in this data set.")
+print(Kendall(shootings_by_year$Year,shootings_by_year$Shootings))
+
+ggplot(shooting_data_tidy,aes(x=Month)) + geom_bar() + 
+  labs(title = "Number of Shootings by Month", x = "Month", y = "Number of Shootings") +
+  scale_x_discrete(labels = month.name)
+
+```
+
+As I start thinking of ways to visualize and analyze the data, it becomes apparent that there are a multitude of different questions that you can ask and answer with any data set.
+
+## Biases
+
+The main bias that comes to mind when discussing the NYPD Shooting Data Base is reporting bias. 
+Given that the accuracy and completeness of the data depends on the reporting practice of law enforcement agencies, who may have incentives to report more or less shootings, there is significant bias to consider. 
+
+Regarding my personal bias, I do not think there are many biases introduced with the analyses that I have currently conducted. However, in the future, if I were to perform analyses regarding the perpetrator's race or age, I would need to make sure to be objective regarding how I analyze and report my results to avoid sexism or ageism. Additionally, in my reporting of the results, I should mention the limitations, such as how the race and/or age were determined in this data set (whether it is self-reported by perpetrator or found in some other manner).
+
+```{r session_info, include=FALSE}
+sessionInfo()
+```
